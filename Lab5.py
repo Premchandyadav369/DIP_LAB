@@ -1,12 +1,8 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
-# ==== USER SETTINGS ====
-img_path = r"C:\Users\23BCE7167\Downloads\redbull.jpg"
-cutoff = 50
-order = 2
-# =======================
+import argparse
+import os
 
 def spatial_shift(img):
     """Multiply image by (-1)^(x+y) to center spectrum."""
@@ -57,33 +53,44 @@ def apply_filter(img, filter_type, highpass, cutoff, order):
         result = (result - min_val) * (255.0 / (max_val - min_val))
     return np.clip(result, 0, 255).astype(np.uint8)
 
-# ---- MAIN ----
-img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-if img is None:
-    raise FileNotFoundError(f"Image not found at: {img_path}")
+def main(image_path, cutoff, order):
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image not found at: {image_path}")
 
-filter_types = ["ideal", "butterworth", "gaussian"]
-highpass_modes = [False, True]  # Lowpass and Highpass
+    img = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if img is None:
+        raise FileNotFoundError(f"Image not found at: {image_path}")
 
-results = [img]
-titles = ["Original"]
+    filter_types = ["ideal", "butterworth", "gaussian"]
+    highpass_modes = [False, True]  # Lowpass and Highpass
 
-for ftype in filter_types:
-    for hp in highpass_modes:
-        filtered_img = apply_filter(img, ftype, hp, cutoff, order)
-        results.append(filtered_img)
-        titles.append(f"{ftype.capitalize()} {'HPF' if hp else 'LPF'}")
+    results = [img]
+    titles = ["Original"]
 
-# ---- DISPLAY ----
-plt.figure(figsize=(15, 8))
-cols = 4
-rows = int(np.ceil(len(results) / cols))
+    for ftype in filter_types:
+        for hp in highpass_modes:
+            filtered_img = apply_filter(img, ftype, hp, cutoff, order)
+            results.append(filtered_img)
+            titles.append(f"{ftype.capitalize()} {'HPF' if hp else 'LPF'}")
 
-for i, (res, title) in enumerate(zip(results, titles)):
-    plt.subplot(rows, cols, i + 1)
-    plt.imshow(cv2.cvtColor(res, cv2.COLOR_BGR2RGB))
-    plt.title(title)
-    plt.axis("off")
+    # ---- DISPLAY ----
+    plt.figure(figsize=(15, 8))
+    cols = 4
+    rows = int(np.ceil(len(results) / cols))
 
-plt.tight_layout()
-plt.show()
+    for i, (res, title) in enumerate(zip(results, titles)):
+        plt.subplot(rows, cols, i + 1)
+        plt.imshow(cv2.cvtColor(res, cv2.COLOR_BGR2RGB))
+        plt.title(title)
+        plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Image Filtering in the Frequency Domain.')
+    parser.add_argument('image_path', type=str, help='The path to the input image.')
+    parser.add_argument('--cutoff', type=int, default=50, help='Cutoff frequency for the filters.')
+    parser.add_argument('--order', type=int, default=2, help='Order for the Butterworth filter.')
+    args = parser.parse_args()
+    main(args.image_path, args.cutoff, args.order)

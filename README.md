@@ -6,6 +6,49 @@ This repository contains a series of Python scripts for Digital Image Processing
 
 ---
 
+## Getting Started
+
+### Prerequisites
+
+Make sure you have Python 3.6+ installed.
+
+### Installation
+
+1.  Clone the repository:
+    ```sh
+    git clone <repository-url>
+    ```
+2.  Navigate to the project directory:
+    ```sh
+    cd <repository-directory>
+    ```
+3.  Install the required dependencies:
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+### Running the Scripts
+
+Each script is a standalone command-line tool. To run a script, use the following format:
+
+```sh
+python <script_name.py> <path_to_your_image> [options]
+```
+
+For example, to run the Image Negative transformation from `Lab2.py` on an image located in the `images` folder, you would use:
+
+```sh
+python Lab2.py images/sample.jpg
+```
+
+Each script has its own set of options. To see the available options for a specific script, use the `-h` or `--help` flag:
+
+```sh
+python <script_name.py> -h
+```
+
+---
+
 ## Lab 2: Image Enhancement in the Spatial Domain
 
 This script focuses on point processing techniques for image enhancement.
@@ -115,3 +158,14 @@ This script compares the performance of DCT (Discrete Cosine Transform) and DST 
 2. A certain percentage of the transform coefficients (from the top-left) are kept, and the rest are discarded.
 3. The image is reconstructed from the remaining coefficients.
 4. The compressed image sizes are compared and displayed in a summary table.
+
+---
+
+## Lab 10: Image Segmentation
+
+This script demonstrates image segmentation using Otsu's thresholding method.
+
+### Process:
+1. The input image is converted to grayscale.
+2. Otsu's method is applied to automatically determine the optimal threshold value to separate the foreground from the background.
+3. The resulting binary image is displayed.

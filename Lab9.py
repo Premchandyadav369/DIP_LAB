@@ -4,15 +4,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 from scipy.fftpack import dst, idst
-
-# ---------------- Step 1: Load and resize color image ----------------
-img_path = r"C:\Users\23BCE7167\Downloads\peakyblinders.jpg"  # change path
-original = cv2.imread(img_path)
-original = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
-original = cv2.resize(original, (512, 512))
-
-# ---------------- Step 2: Define compression ratios ----------------
-ratios = [5, 10, 25, 50, 75]
+import argparse
 
 def keep_top_left(mat, percent):
     size = int(mat.shape[0] * np.sqrt(percent / 100.0))
@@ -26,73 +18,79 @@ def dst2(a):
 def idst2(a):
     return idst(idst(a.T, type=2).T, type=2) / (4 * (a.shape[0]) * (a.shape[1]) / (512 * 512))
 
-float_img = np.float32(original)
+def main(image_path, ratios):
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image not found at: {image_path}")
 
-# ---------------- Step 3: Perform DCT & DST compression ----------------
-data_rows = []
-dct_images, dst_images = [], []
+    original = cv2.imread(image_path)
+    original = cv2.cvtColor(original, cv2.COLOR_BGR2RGB)
+    original = cv2.resize(original, (512, 512))
 
-for r in ratios:
-    dct_channels, dst_channels = [], []
-    new_size = 0
-    for c in range(3):
-        # DCT compression
-        dct_trans = cv2.dct(float_img[:, :, c])
-        dct_masked, size = keep_top_left(dct_trans, r)
-        new_size = size
-        dct_recon = cv2.idct(dct_masked)
-        dct_channels.append(dct_recon)
+    float_img = np.float32(original)
 
-        # DST compression
-        dst_trans = dst2(float_img[:, :, c])
-        dst_masked, _ = keep_top_left(dst_trans, r)
-        dst_recon = idst2(dst_masked)
-        dst_channels.append(dst_recon)
+    data_rows = []
+    dct_images, dst_images = [], []
+    for r in ratios:
+        dct_channels, dst_channels = [], []
+        new_size = 0
+        for c in range(3):
+            dct_trans = cv2.dct(float_img[:, :, c])
+            dct_masked, size = keep_top_left(dct_trans, r)
+            new_size = size
+            dct_recon = cv2.idct(dct_masked)
+            dct_channels.append(dct_recon)
 
-    dct_img = np.clip(cv2.merge(dct_channels), 0, 255).astype(np.uint8)
-    dst_img = np.clip(cv2.merge(dst_channels), 0, 255).astype(np.uint8)
+            dst_trans = dst2(float_img[:, :, c])
+            dst_masked, _ = keep_top_left(dst_trans, r)
+            dst_recon = idst2(dst_masked)
+            dst_channels.append(dst_recon)
 
-    # Save compressed images
-    dct_file = f"dct_{r}.jpg"
-    dst_file = f"dst_{r}.jpg"
-    cv2.imwrite(dct_file, cv2.cvtColor(dct_img, cv2.COLOR_RGB2BGR))
-    cv2.imwrite(dst_file, cv2.cvtColor(dst_img, cv2.COLOR_RGB2BGR))
+        dct_img = np.clip(cv2.merge(dct_channels), 0, 255).astype(np.uint8)
+        dst_img = np.clip(cv2.merge(dst_channels), 0, 255).astype(np.uint8)
 
-    # Get file sizes
-    dct_size = os.path.getsize(dct_file) / 1024
-    dst_size = os.path.getsize(dst_file) / 1024
-    res = f"{new_size}×{new_size}"
+        dct_file = f"dct_{r}.jpg"
+        dst_file = f"dst_{r}.jpg"
+        cv2.imwrite(dct_file, cv2.cvtColor(dct_img, cv2.COLOR_RGB2BGR))
+        cv2.imwrite(dst_file, cv2.cvtColor(dst_img, cv2.COLOR_RGB2BGR))
 
-    data_rows.append({
-        "Compression %": f"{r}%",
-        "Resolution": res,
-        "DCT Size (KB)": round(dct_size, 2),
-        "DST Size (KB)": round(dst_size, 2)
-    })
+        dct_size = os.path.getsize(dct_file) / 1024
+        dst_size = os.path.getsize(dst_file) / 1024
+        res = f"{new_size}×{new_size}"
 
-    dct_images.append(dct_img)
-    dst_images.append(dst_img)
+        data_rows.append({
+            "Compression %": f"{r}%",
+            "Resolution": res,
+            "DCT Size (KB)": round(dct_size, 2),
+            "DST Size (KB)": round(dst_size, 2)
+        })
 
-# ---------------- Step 4: Display results in console ----------------
-df = pd.DataFrame(data_rows)
-print("\n=== Image Compression Summary (DCT vs DST, 512×512 Input) ===\n")
-print(df.to_string(index=False))
+        dct_images.append(dct_img)
+        dst_images.append(dst_img)
 
-# ---------------- Step 5: Display image comparison layout ----------------
-rows = len(ratios)
-fig, axes = plt.subplots(rows, 2, figsize=(8, 2.5 * rows))
-fig.suptitle("DCT vs DST Image Compression (512×512 Input)", fontsize=16)
+        os.remove(dct_file)
+        os.remove(dst_file)
 
-for i in range(rows):
-    # DCT image
-    axes[i, 0].imshow(dct_images[i])
-    axes[i, 0].set_title(f"DCT {ratios[i]}% ({df['DCT Size (KB)'][i]} KB)")
-    axes[i, 0].axis('off')
+    df = pd.DataFrame(data_rows)
+    print("\n=== Image Compression Summary (DCT vs DST, 512×512 Input) ===\n")
+    print(df.to_string(index=False))
 
-    # DST image
-    axes[i, 1].imshow(dst_images[i])
-    axes[i, 1].set_title(f"DST {ratios[i]}% ({df['DST Size (KB)'][i]} KB)")
-    axes[i, 1].axis('off')
+    rows = len(ratios)
+    fig, axes = plt.subplots(rows, 2, figsize=(8, 2.5 * rows))
+    fig.suptitle("DCT vs DST Image Compression (512×512 Input)", fontsize=16)
+    for i in range(rows):
+        axes[i, 0].imshow(dct_images[i])
+        axes[i, 0].set_title(f"DCT {ratios[i]}% ({df['DCT Size (KB)'][i]} KB)")
+        axes[i, 0].axis('off')
 
-plt.tight_layout()
-plt.show()
+        axes[i, 1].imshow(dst_images[i])
+        axes[i, 1].set_title(f"DST {ratios[i]}% ({df['DST Size (KB)'][i]} KB)")
+        axes[i, 1].axis('off')
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Image compression using DCT and DST.')
+    parser.add_argument('image_path', type=str, help='The path to the input image.')
+    parser.add_argument('--ratios', type=int, nargs='+', default=[5, 10, 25, 50, 75], help='List of compression ratios to test.')
+    args = parser.parse_args()
+    main(args.image_path, args.ratios)
