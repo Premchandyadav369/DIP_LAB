@@ -1,12 +1,8 @@
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-
-# ==== USER SETTINGS ====
-img_path = r"C:\Users\23BCE7167\Downloads\andromeda.jpg"
-cutoff = 40
-order = 2
-# =======================
+import argparse
+import os
 
 def spatial_shift(img):
     h, w = img.shape
@@ -51,28 +47,39 @@ def apply_filter_gray(img, filter_type, highpass, cutoff, order):
         result = (result - min_val) * (255.0 / (max_val - min_val))
     return np.clip(result, 0, 255).astype(np.uint8)
 
-# ---- MAIN ----
-img_color = cv2.imread(img_path, cv2.IMREAD_COLOR)
-if img_color is None:
-    raise FileNotFoundError(f"Image not found at: {img_path}")
+def main(image_path, cutoff, order):
+    if not os.path.exists(image_path):
+        raise FileNotFoundError(f"Image not found at: {image_path}")
 
-# Convert to grayscale (luminosity)
-img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
+    img_color = cv2.imread(image_path, cv2.IMREAD_COLOR)
+    if img_color is None:
+        raise FileNotFoundError(f"Image not found at: {image_path}")
 
-# Process filters on grayscale
-lpf_result = apply_filter_gray(img_gray, "butterworth", False, cutoff, order)
-hpf_result = apply_filter_gray(img_gray, "butterworth", True, cutoff, order)
+    # Convert to grayscale (luminosity)
+    img_gray = cv2.cvtColor(img_color, cv2.COLOR_BGR2GRAY)
 
-# Display Results
-plt.figure(figsize=(12, 6))
-titles = ["Original (Gray)", "Noise Reduction (Butterworth LPF)", "Detail Enhancement (Butterworth HPF)"]
-images = [img_gray, lpf_result, hpf_result]
+    # Process filters on grayscale
+    lpf_result = apply_filter_gray(img_gray, "butterworth", False, cutoff, order)
+    hpf_result = apply_filter_gray(img_gray, "butterworth", True, cutoff, order)
 
-for i, (res, title) in enumerate(zip(images, titles)):
-    plt.subplot(1, 3, i + 1)
-    plt.imshow(res, cmap='gray')
-    plt.title(title)
-    plt.axis("off")
+    # Display Results
+    plt.figure(figsize=(12, 6))
+    titles = ["Original (Gray)", "Noise Reduction (Butterworth LPF)", "Detail Enhancement (Butterworth HPF)"]
+    images = [img_gray, lpf_result, hpf_result]
 
-plt.tight_layout()
-plt.show()
+    for i, (res, title) in enumerate(zip(images, titles)):
+        plt.subplot(1, 3, i + 1)
+        plt.imshow(res, cmap='gray')
+        plt.title(title)
+        plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Apply Butterworth filters to a grayscale image.')
+    parser.add_argument('image_path', type=str, help='The path to the input image.')
+    parser.add_argument('--cutoff', type=int, default=40, help='Cutoff frequency for the Butterworth filter.')
+    parser.add_argument('--order', type=int, default=2, help='Order for the Butterworth filter.')
+    args = parser.parse_args()
+    main(args.image_path, args.cutoff, args.order)
